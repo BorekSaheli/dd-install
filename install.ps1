@@ -42,7 +42,7 @@ $script:Pkgs = @(
     @{ Id='nerdfont';  N='JetBrains Mono'; Ds='nerd font + terminal';    C='DD Tools'; Sub='Config'; Order=5 }
     @{ Id='starship';  N='Starship';       Ds='cross-shell prompt';      C='DD Tools'; Sub='Config'; Order=6 }
     @{ Id='chezmoi';   N='chezmoi';        Ds='dotfiles from GitHub';    C='DD Tools'; Sub='Config'; Order=99 }
-    @{ Id='git';       N='Git';            Ds='version control';         C='DD Tools'; Sub='';       Order=10 }
+    @{ Id='git';       N='Git';            Ds='version control';         C='DD Tools'; Sub='';       Order=0 }
     @{ Id='azurecli';  N='Azure CLI';      Ds='+ DevOps extension';      C='DD Tools'; Sub='';       Order=11 }
     @{ Id='claudecode';N='Claude Code';    Ds='CLI agent';               C='DD Tools'; Sub='';       Order=12 }
     @{ Id='claudedesk';N='Claude Desktop'; Ds='desktop app';             C='DD Tools'; Sub='';       Order=13 }
