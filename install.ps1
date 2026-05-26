@@ -6,15 +6,15 @@ $ErrorActionPreference = 'Stop'
 # ─── self-relaunch when piped via irm | iex ─────────────────────────────────
 if (-not $Launched) {
     $tempPath = Join-Path $env:TEMP 'dd-install.ps1'
-    $scriptContent = @'
-{SELF}
-'@
-    if ($MyInvocation.MyCommand.Path) {
-        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $MyInvocation.MyCommand.Path -Launched
+    $scriptFile = $null
+    if ($MyInvocation.MyCommand -and $MyInvocation.MyCommand.PSObject.Properties['Path']) {
+        $scriptFile = $MyInvocation.MyCommand.Path
+    }
+    if ($scriptFile) {
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $scriptFile -Launched
     }
     else {
-        $selfContent = (Invoke-RestMethod 'https://raw.githubusercontent.com/BorekSaheli/dd-install/main/install.ps1')
-        Set-Content -Path $tempPath -Value $selfContent -Encoding UTF8
+        Invoke-RestMethod 'https://raw.githubusercontent.com/BorekSaheli/dd-install/main/install.ps1' -OutFile $tempPath
         & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $tempPath -Launched
         Remove-Item $tempPath -Force -ErrorAction SilentlyContinue
     }
