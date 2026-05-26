@@ -39,20 +39,23 @@ $script:Pkgs = @(
     @{ Id='ruff';      N='Ruff';           Ds='linter / formatter';      C='DD Tools'; Sub='Python'; Order=2 }
     @{ Id='ty';        N='ty';             Ds='type checker';            C='DD Tools'; Sub='Python'; Order=3 }
     @{ Id='python313'; N='Python 3.13';    Ds='global via uv';           C='DD Tools'; Sub='Python'; Order=4 }
-    @{ Id='git';       N='Git';            Ds='version control';         C='DD Tools'; Sub='';       Order=5 }
-    @{ Id='azurecli';  N='Azure CLI';      Ds='+ DevOps extension';      C='DD Tools'; Sub='';       Order=6 }
-    @{ Id='claudecode';N='Claude Code';    Ds='CLI agent';               C='DD Tools'; Sub='';       Order=7 }
-    @{ Id='claudedesk';N='Claude Desktop'; Ds='desktop app';             C='DD Tools'; Sub='';       Order=8 }
-    @{ Id='viktorcli'; N='Viktor CLI';     Ds='platform CLI';            C='DD Tools'; Sub='';       Order=9 }
-    @{ Id='chrome';    N='Chrome';         Ds='browser by Google';       C='Browser';  Sub='';       Order=10 }
-    @{ Id='firefox';   N='Firefox';        Ds='browser by Mozilla';      C='Browser';  Sub='';       Order=10 }
-    @{ Id='curl';      N='curl';           Ds='HTTP client';             C='CLI';      Sub='';       Order=10 }
-    @{ Id='wget';      N='wget';           Ds='downloader';              C='CLI';      Sub='';       Order=10 }
-    @{ Id='jq';        N='jq';             Ds='JSON processor';          C='CLI';      Sub='';       Order=10 }
-    @{ Id='ripgrep';   N='ripgrep';        Ds='fast search';             C='CLI';      Sub='';       Order=10 }
-    @{ Id='fzf';       N='fzf';            Ds='fuzzy finder';            C='CLI';      Sub='';       Order=10 }
-    @{ Id='bat';       N='bat';            Ds='better cat';              C='CLI';      Sub='';       Order=10 }
-    @{ Id='eza';       N='eza';            Ds='better ls';               C='CLI';      Sub='';       Order=10 }
+    @{ Id='chezmoi';   N='chezmoi';        Ds='dotfiles manager';        C='DD Tools'; Sub='Config'; Order=5 }
+    @{ Id='nerdfont';  N='JetBrains Mono'; Ds='nerd font + terminal';    C='DD Tools'; Sub='Config'; Order=6 }
+    @{ Id='starship';  N='Starship';       Ds='cross-shell prompt';      C='DD Tools'; Sub='Config'; Order=7 }
+    @{ Id='git';       N='Git';            Ds='version control';         C='DD Tools'; Sub='';       Order=8 }
+    @{ Id='azurecli';  N='Azure CLI';      Ds='+ DevOps extension';      C='DD Tools'; Sub='';       Order=9 }
+    @{ Id='claudecode';N='Claude Code';    Ds='CLI agent';               C='DD Tools'; Sub='';       Order=10 }
+    @{ Id='claudedesk';N='Claude Desktop'; Ds='desktop app';             C='DD Tools'; Sub='';       Order=11 }
+    @{ Id='viktorcli'; N='Viktor CLI';     Ds='platform CLI';            C='DD Tools'; Sub='';       Order=12 }
+    @{ Id='chrome';    N='Chrome';         Ds='browser by Google';       C='Browser';  Sub='';       Order=20 }
+    @{ Id='firefox';   N='Firefox';        Ds='browser by Mozilla';      C='Browser';  Sub='';       Order=20 }
+    @{ Id='curl';      N='curl';           Ds='HTTP client';             C='CLI';      Sub='';       Order=20 }
+    @{ Id='wget';      N='wget';           Ds='downloader';              C='CLI';      Sub='';       Order=20 }
+    @{ Id='jq';        N='jq';             Ds='JSON processor';          C='CLI';      Sub='';       Order=20 }
+    @{ Id='ripgrep';   N='ripgrep';        Ds='fast search';             C='CLI';      Sub='';       Order=20 }
+    @{ Id='fzf';       N='fzf';            Ds='fuzzy finder';            C='CLI';      Sub='';       Order=20 }
+    @{ Id='bat';       N='bat';            Ds='better cat';              C='CLI';      Sub='';       Order=20 }
+    @{ Id='eza';       N='eza';            Ds='better ls';               C='CLI';      Sub='';       Order=20 }
 )
 
 $script:NumPkgs = $script:Pkgs.Count
@@ -170,6 +173,46 @@ function Install-python313 {
         & uv python pin 3.13 --global 2>&1
     }
     else { throw "uv required" }
+}
+function Install-chezmoi {
+    Run-Pkg 'twpayne.chezmoi' 'chezmoi' 'chezmoi'
+    Refresh-Path
+    & chezmoi init --apply BorekSaheli/dotfiles 2>&1
+}
+function Install-nerdfont {
+    $fontZip = Join-Path $env:TEMP 'JetBrainsMono-NF.zip'
+    $fontDir = Join-Path $env:TEMP 'JetBrainsMono-NF'
+    Invoke-RestMethod 'https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip' -OutFile $fontZip
+    Expand-Archive -Path $fontZip -DestinationPath $fontDir -Force
+    $shell = New-Object -ComObject Shell.Application
+    $fontsFolder = $shell.Namespace(0x14)
+    Get-ChildItem $fontDir -Filter '*.ttf' | ForEach-Object {
+        $fontsFolder.CopyHere($_.FullName, 0x10)
+    }
+    Remove-Item $fontZip -Force -ErrorAction SilentlyContinue
+    Remove-Item $fontDir -Recurse -Force -ErrorAction SilentlyContinue
+
+    $wtSettings = Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json'
+    if (Test-Path $wtSettings) {
+        $json = Get-Content $wtSettings -Raw | ConvertFrom-Json
+        if (-not $json.profiles.defaults.PSObject.Properties['font']) {
+            $json.profiles.defaults | Add-Member -NotePropertyName 'font' -NotePropertyValue @{} -Force
+        }
+        $json.profiles.defaults.font = @{ face = 'JetBrainsMono Nerd Font'; size = 12 }
+        $json | ConvertTo-Json -Depth 20 | Set-Content $wtSettings -Encoding UTF8
+        Write-Output "Set JetBrainsMono Nerd Font as Windows Terminal default"
+    }
+}
+function Install-starship {
+    Run-Pkg 'Starship.Starship' 'starship' 'starship'
+    Refresh-Path
+    $profileDir = Split-Path $PROFILE
+    if (-not (Test-Path $profileDir)) { New-Item -ItemType Directory -Path $profileDir -Force | Out-Null }
+    $initLine = 'Invoke-Expression (&starship init powershell)'
+    if (-not (Test-Path $PROFILE) -or -not (Select-String -Path $PROFILE -Pattern 'starship init' -Quiet)) {
+        Add-Content -Path $PROFILE -Value "`n$initLine"
+        Write-Output "Added starship init to $PROFILE"
+    }
 }
 function Install-git      { Run-Pkg 'Git.Git' 'git' 'git' }
 function Install-azurecli {

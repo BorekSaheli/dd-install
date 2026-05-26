@@ -15,6 +15,10 @@ irm https://raw.githubusercontent.com/BorekSaheli/dd-install/main/install.ps1 | 
           ○ Ruff              linter / formatter
           ○ ty                type checker
           ○ Python 3.13       global via uv
+      ○ Config
+          ○ chezmoi           dotfiles manager
+          ○ JetBrains Mono    nerd font + terminal
+          ○ Starship          cross-shell prompt
       ○ Git                version control
       ○ Azure CLI          + DevOps extension
       ○ Claude Code        CLI agent
@@ -40,5 +44,11 @@ irm https://raw.githubusercontent.com/BorekSaheli/dd-install/main/install.ps1 | 
 Select a section header to toggle everything in it.
 
 `space` toggle / `a` all / `enter` install / `q` quit
+
+## Config sub-group
+
+- **chezmoi** — installs chezmoi and runs `chezmoi init --apply BorekSaheli/dotfiles`
+- **JetBrains Mono** — installs the Nerd Font and sets it as the default Windows Terminal font
+- **Starship** — installs the prompt and adds `starship init` to your PowerShell profile
 
 Auto-detects **winget**, **choco**, or **scoop**.
