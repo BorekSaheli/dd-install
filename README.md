@@ -23,31 +23,10 @@ irm https://raw.githubusercontent.com/BorekSaheli/dd-install/main/install.ps1 | 
     ○ Claude Desktop     desktop app
     ○ Viktor CLI         platform CLI
 
-  Languages
+  Browser
 
-    ○ Node.js            JavaScript runtime
-    ○ Rust               via rustup
-    ○ Go                 by Google
-
-  Editors
-
-    ○ VS Code            editor
-    ○ Neovim             vim-based editor
-
-  Apps
-
-    ○ Chrome             browser
-    ○ Firefox            browser
-
-  CLI
-
-    ○ curl               HTTP client
-    ○ wget               downloader
-    ○ jq                 JSON processor
-    ○ ripgrep            fast search
-    ○ fzf                fuzzy finder
-    ○ bat                better cat
-    ○ eza                better ls
+    ○ Chrome             browser by Google
+    ○ Firefox            browser by Mozilla
 
   space select / a all / g dd tools / enter install / q quit
 ```

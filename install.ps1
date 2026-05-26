@@ -44,20 +44,8 @@ $script:Pkgs = @(
     @{ Id='claudecode';N='Claude Code';    Ds='CLI agent';               C='DD Tools'; Sub='';       Order=7 }
     @{ Id='claudedesk';N='Claude Desktop'; Ds='desktop app';             C='DD Tools'; Sub='';       Order=8 }
     @{ Id='viktorcli'; N='Viktor CLI';     Ds='platform CLI';            C='DD Tools'; Sub='';       Order=9 }
-    @{ Id='node';      N='Node.js';        Ds='JavaScript runtime';      C='Languages';Sub='';       Order=10 }
-    @{ Id='rust';      N='Rust';           Ds='via rustup';              C='Languages';Sub='';       Order=10 }
-    @{ Id='golang';    N='Go';             Ds='by Google';               C='Languages';Sub='';       Order=10 }
-    @{ Id='code';      N='VS Code';        Ds='editor';                  C='Editors';  Sub='';       Order=10 }
-    @{ Id='neovim';    N='Neovim';         Ds='vim-based editor';        C='Editors';  Sub='';       Order=10 }
-    @{ Id='chrome';    N='Chrome';         Ds='browser';                 C='Apps';     Sub='';       Order=10 }
-    @{ Id='firefox';   N='Firefox';        Ds='browser';                 C='Apps';     Sub='';       Order=10 }
-    @{ Id='curl';      N='curl';           Ds='HTTP client';             C='CLI';      Sub='';       Order=10 }
-    @{ Id='wget';      N='wget';           Ds='downloader';              C='CLI';      Sub='';       Order=10 }
-    @{ Id='jq';        N='jq';             Ds='JSON processor';          C='CLI';      Sub='';       Order=10 }
-    @{ Id='ripgrep';   N='ripgrep';        Ds='fast search';             C='CLI';      Sub='';       Order=10 }
-    @{ Id='fzf';       N='fzf';            Ds='fuzzy finder';            C='CLI';      Sub='';       Order=10 }
-    @{ Id='bat';       N='bat';            Ds='better cat';              C='CLI';      Sub='';       Order=10 }
-    @{ Id='eza';       N='eza';            Ds='better ls';               C='CLI';      Sub='';       Order=10 }
+    @{ Id='chrome';    N='Chrome';         Ds='browser by Google';       C='Browser';  Sub='';       Order=10 }
+    @{ Id='firefox';   N='Firefox';        Ds='browser by Mozilla';      C='Browser';  Sub='';       Order=10 }
 )
 
 $script:Total = $script:Pkgs.Count
@@ -128,26 +116,8 @@ function Install-viktorcli {
     elseif (Get-Command pip -ErrorAction SilentlyContinue) { & pip install viktor-cli 2>&1 }
     else { throw "need uv or pip" }
 }
-function Install-node    { Run-Pkg 'OpenJS.NodeJS.LTS'          'nodejs-lts'     'nodejs-lts'  }
-function Install-rust    {
-    switch ($script:PM) {
-        'winget' { & winget install --id Rustlang.Rustup -e --accept-source-agreements --accept-package-agreements --silent 2>&1 }
-        'choco'  { & choco install rustup.install -y 2>&1 }
-        'scoop'  { & scoop install rustup 2>&1 }
-    }
-}
-function Install-golang  { Run-Pkg 'GoLang.Go'                  'golang'         'go'          }
-function Install-code    { Run-Pkg 'Microsoft.VisualStudioCode' 'vscode'         'vscode'      }
-function Install-neovim  { Run-Pkg 'Neovim.Neovim'              'neovim'         'neovim'      }
 function Install-chrome  { Run-Pkg 'Google.Chrome'              'googlechrome'   'googlechrome'}
 function Install-firefox { Run-Pkg 'Mozilla.Firefox'            'firefox'        'firefox'     }
-function Install-curl    { Run-Pkg 'cURL.cURL'                  'curl'           'curl'        }
-function Install-wget    { Run-Pkg 'JernejSimoncic.Wget'        'wget'           'wget'        }
-function Install-jq      { Run-Pkg 'jqlang.jq'                  'jq'             'jq'          }
-function Install-ripgrep { Run-Pkg 'BurntSushi.ripgrep.MSVC'    'ripgrep'        'ripgrep'     }
-function Install-fzf     { Run-Pkg 'junegunn.fzf'               'fzf'            'fzf'         }
-function Install-bat     { Run-Pkg 'sharkdp.bat'                'bat'            'bat'         }
-function Install-eza     { Run-Pkg 'eza-community.eza'          'eza'            'eza'         }
 
 # ─── draw ────────────────────────────────────────────────────────────────────
 $script:StartLine = 0
