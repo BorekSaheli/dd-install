@@ -3,7 +3,6 @@ param([switch]$Launched)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# ─── self-relaunch when piped via irm | iex ─────────────────────────────────
 if (-not $Launched) {
     $tempPath = Join-Path $env:TEMP 'dd-install.ps1'
     $scriptFile = $null
@@ -21,31 +20,31 @@ if (-not $Launched) {
     return
 }
 
-# ─── colors ──────────────────────────────────────────────────────────────────
+# ─── style ───────────────────────────────────────────────────────────────────
 $e = [char]27
-$B  = "$e[1m";   $D  = "$e[2m";  $R  = "$e[0m"
-$GR = "$e[32m";  $CY = "$e[36m"; $YL = "$e[33m"
-$RD = "$e[31m";  $MG = "$e[35m"
+$B  = "$e[1m";  $D = "$e[2m";  $R = "$e[0m"
+$AC = "$e[38;5;75m"   # accent: soft blue
+$OK = "$e[38;5;114m"  # green
+$WN = "$e[38;5;222m"  # yellow
+$ER = "$e[38;5;168m"  # red
+$DM = "$e[38;5;243m"  # dim
+$HD = "$e[38;5;252m"  # header (bright white)
 
-# tree glyphs
-$T_V = [char]0x2502  # │
-$T_T = [char]0x251C  # ├
-$T_L = [char]0x2514  # └
-$T_H = [char]0x2500  # ─
+$DOT_ON  = "$OK$([char]0x25CF)$R"   # ●
+$DOT_OFF = "$DM$([char]0x25CB)$R"   # ○
 
 # ─── packages ───────────────────────────────────────────────────────────────
-# Cat = top category, Sub = sub-folder (or '' for none), Order = install order
 $script:Pkgs = @(
     @{ Id='uv';        N='uv';             Ds='package manager';         C='DD Tools'; Sub='Python'; Order=1 }
-    @{ Id='ruff';      N='Ruff';           Ds='linter/formatter (uv)';   C='DD Tools'; Sub='Python'; Order=2 }
-    @{ Id='ty';        N='ty';             Ds='type checker (uv)';       C='DD Tools'; Sub='Python'; Order=3 }
+    @{ Id='ruff';      N='Ruff';           Ds='linter / formatter';      C='DD Tools'; Sub='Python'; Order=2 }
+    @{ Id='ty';        N='ty';             Ds='type checker';            C='DD Tools'; Sub='Python'; Order=3 }
     @{ Id='python313'; N='Python 3.13';    Ds='global via uv';           C='DD Tools'; Sub='Python'; Order=4 }
     @{ Id='git';       N='Git';            Ds='version control';         C='DD Tools'; Sub='';       Order=5 }
     @{ Id='azurecli';  N='Azure CLI';      Ds='+ DevOps extension';      C='DD Tools'; Sub='';       Order=6 }
     @{ Id='claudecode';N='Claude Code';    Ds='CLI agent';               C='DD Tools'; Sub='';       Order=7 }
     @{ Id='claudedesk';N='Claude Desktop'; Ds='desktop app';             C='DD Tools'; Sub='';       Order=8 }
     @{ Id='viktorcli'; N='Viktor CLI';     Ds='platform CLI';            C='DD Tools'; Sub='';       Order=9 }
-    @{ Id='node';      N='Node.js';        Ds='JavaScript runtime LTS';  C='Languages';Sub='';       Order=10 }
+    @{ Id='node';      N='Node.js';        Ds='JavaScript runtime';      C='Languages';Sub='';       Order=10 }
     @{ Id='rust';      N='Rust';           Ds='via rustup';              C='Languages';Sub='';       Order=10 }
     @{ Id='golang';    N='Go';             Ds='by Google';               C='Languages';Sub='';       Order=10 }
     @{ Id='code';      N='VS Code';        Ds='editor';                  C='Editors';  Sub='';       Order=10 }
@@ -55,7 +54,7 @@ $script:Pkgs = @(
     @{ Id='curl';      N='curl';           Ds='HTTP client';             C='CLI';      Sub='';       Order=10 }
     @{ Id='wget';      N='wget';           Ds='downloader';              C='CLI';      Sub='';       Order=10 }
     @{ Id='jq';        N='jq';             Ds='JSON processor';          C='CLI';      Sub='';       Order=10 }
-    @{ Id='ripgrep';   N='ripgrep';        Ds='fast search (rg)';        C='CLI';      Sub='';       Order=10 }
+    @{ Id='ripgrep';   N='ripgrep';        Ds='fast search';             C='CLI';      Sub='';       Order=10 }
     @{ Id='fzf';       N='fzf';            Ds='fuzzy finder';            C='CLI';      Sub='';       Order=10 }
     @{ Id='bat';       N='bat';            Ds='better cat';              C='CLI';      Sub='';       Order=10 }
     @{ Id='eza';       N='eza';            Ds='better ls';               C='CLI';      Sub='';       Order=10 }
@@ -90,63 +89,45 @@ function Install-uv {
     powershell -ExecutionPolicy Bypass -c "irm https://astral.sh/uv/install.ps1 | iex" 2>&1
     Refresh-Path
 }
-
 function Install-ruff {
     Refresh-Path
-    if (Get-Command uv -ErrorAction SilentlyContinue) {
-        & uv tool install ruff 2>&1
-    }
+    if (Get-Command uv -ErrorAction SilentlyContinue) { & uv tool install ruff 2>&1 }
     else { Run-Pkg 'Astral.Ruff' 'ruff' 'ruff' }
 }
-
 function Install-ty {
     Refresh-Path
-    if (Get-Command uv -ErrorAction SilentlyContinue) {
-        & uv tool install ty 2>&1
-    }
-    else { Write-Output "uv required for ty"; throw "uv required" }
+    if (Get-Command uv -ErrorAction SilentlyContinue) { & uv tool install ty 2>&1 }
+    else { throw "uv required" }
 }
-
 function Install-python313 {
     Refresh-Path
     if (Get-Command uv -ErrorAction SilentlyContinue) {
         & uv python install 3.13 2>&1
         & uv python pin 3.13 --global 2>&1
     }
-    else { Write-Output "uv required"; throw "uv required" }
+    else { throw "uv required" }
 }
-
 function Install-git      { Run-Pkg 'Git.Git' 'git' 'git' }
-
 function Install-azurecli {
     Run-Pkg 'Microsoft.AzureCLI' 'azure-cli' 'azure-cli'
     Refresh-Path
     & az extension add --name azure-devops --yes 2>&1
 }
-
 function Install-claudecode {
     Refresh-Path
     if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        Write-Output "Installing Node.js first..."
         Run-Pkg 'OpenJS.NodeJS.LTS' 'nodejs-lts' 'nodejs-lts'
         Refresh-Path
     }
     & npm install -g @anthropic-ai/claude-code 2>&1
 }
-
 function Install-claudedesk { Run-Pkg 'Anthropic.Claude' 'claude' 'claude' }
-
 function Install-viktorcli {
     Refresh-Path
-    if (Get-Command uv -ErrorAction SilentlyContinue) {
-        & uv tool install viktor-cli 2>&1
-    }
-    elseif (Get-Command pip -ErrorAction SilentlyContinue) {
-        & pip install viktor-cli 2>&1
-    }
-    else { Write-Output "need uv or pip"; throw "no installer" }
+    if (Get-Command uv -ErrorAction SilentlyContinue) { & uv tool install viktor-cli 2>&1 }
+    elseif (Get-Command pip -ErrorAction SilentlyContinue) { & pip install viktor-cli 2>&1 }
+    else { throw "need uv or pip" }
 }
-
 function Install-node    { Run-Pkg 'OpenJS.NodeJS.LTS'          'nodejs-lts'     'nodejs-lts'  }
 function Install-rust    {
     switch ($script:PM) {
@@ -168,98 +149,58 @@ function Install-fzf     { Run-Pkg 'junegunn.fzf'               'fzf'           
 function Install-bat     { Run-Pkg 'sharkdp.bat'                'bat'            'bat'         }
 function Install-eza     { Run-Pkg 'eza-community.eza'          'eza'            'eza'         }
 
-# ─── figure out tree structure for rendering ─────────────────────────────────
-function Get-TreeInfo {
-    # for each package, figure out what tree prefix to draw
-    # returns array of @{ Prefix; IsLastInCat; IsLastInSub } parallel to $Pkgs
-    $info = @()
-    for ($i = 0; $i -lt $script:Total; $i++) {
-        $p = $script:Pkgs[$i]
-        $nextP = if ($i + 1 -lt $script:Total) { $script:Pkgs[$i + 1] } else { $null }
-
-        $isLastInCat = (-not $nextP) -or ($nextP.C -ne $p.C)
-        $isLastInSub = $false
-        if ($p.Sub -ne '') {
-            $isLastInSub = (-not $nextP) -or ($nextP.Sub -ne $p.Sub) -or ($nextP.C -ne $p.C)
-        }
-
-        $hasMoreAfterSub = $false
-        if ($p.Sub -ne '') {
-            for ($j = $i + 1; $j -lt $script:Total; $j++) {
-                if ($script:Pkgs[$j].C -ne $p.C) { break }
-                if ($script:Pkgs[$j].Sub -ne $p.Sub) { $hasMoreAfterSub = $true; break }
-            }
-        }
-
-        $info += ,@{ IsLastInCat=$isLastInCat; IsLastInSub=$isLastInSub; HasMoreAfterSub=$hasMoreAfterSub }
-    }
-    return $info
-}
-
-# ─── draw the list inline ───────────────────────────────────────────────────
+# ─── draw ────────────────────────────────────────────────────────────────────
 $script:StartLine = 0
 
 function Draw-List {
     [Console]::SetCursorPosition(0, $script:StartLine)
-
-    $treeInfo = Get-TreeInfo
-    $prevCat = ''
-    $prevSub = ''
+    $prevCat = ''; $prevSub = ''
 
     for ($i = 0; $i -lt $script:Total; $i++) {
         $p = $script:Pkgs[$i]
-        $ti = $treeInfo[$i]
 
-        # category header
         if ($p.C -ne $prevCat) {
             if ($prevCat -ne '') { Write-Host "" }
-            Write-Host "  ${MG}${B}$($p.C)${R}"
-            $prevCat = $p.C
-            $prevSub = ''
+            Write-Host "  ${HD}${B}$($p.C)${R}"
+            Write-Host ""
+            $prevCat = $p.C; $prevSub = ''
         }
 
-        # sub-folder header
         if ($p.Sub -ne '' -and $p.Sub -ne $prevSub) {
-            $subBranch = if ($ti.IsLastInCat -and $ti.IsLastInSub) { $T_L } else { $T_T }
-            Write-Host "  ${D}${subBranch}${T_H}${T_H}${R} ${CY}${B}$($p.Sub)${R}"
+            Write-Host "    ${AC}$($p.Sub)${R}"
             $prevSub = $p.Sub
         }
 
-        # build prefix
-        $box = if ($script:Sel[$i]) { "${GR}[x]${R}" } else { "[ ]" }
-        $arrow = if ($i -eq $script:Cur) { "${CY}${B}>${R} " } else { "  " }
-        $name = $p.N.PadRight(16)
-        $hi = if ($i -eq $script:Cur) { $B } else { '' }
+        $dot = if ($script:Sel[$i]) { $DOT_ON } else { $DOT_OFF }
+        $name = $p.N.PadRight(18)
+        $indent = if ($p.Sub -ne '') { '      ' } else { '    ' }
 
-        if ($p.Sub -ne '') {
-            $vert = if ($ti.HasMoreAfterSub -or -not $ti.IsLastInSub) { $T_V } else { ' ' }
-            $branch = if ($ti.IsLastInSub) { $T_L } else { $T_T }
-            Write-Host "  ${D}${vert}   ${branch}${T_H}${R} ${arrow}${box} ${hi}${name}${R} ${D}$($p.Ds)${R}"
+        if ($i -eq $script:Cur) {
+            Write-Host "${indent}${AC}>${R} ${dot} ${B}${name}${R}${DM}$($p.Ds)${R}"
         }
         else {
-            $branch = if ($ti.IsLastInCat) { $T_L } else { $T_T }
-            Write-Host "  ${D}${branch}${T_H}${R} ${arrow}${box} ${hi}${name}${R} ${D}$($p.Ds)${R}"
+            Write-Host "${indent}  ${dot} ${name}${DM}$($p.Ds)${R}"
         }
     }
 
     $count = @($script:Sel | Where-Object { $_ -eq $true }).Count
     Write-Host ""
     if ($count -gt 0) {
-        Write-Host "  ${GR}${B}$count selected${R}  ${D}Enter=install  q=quit${R}    "
+        Write-Host "  ${OK}${B}$count selected${R}  ${DM}enter install ${DM}${AC}${DM}/ q quit${R}      "
     }
     else {
-        Write-Host "  ${D}Space=toggle  a=all  g=DD Tools  Enter=install  q=quit${R}    "
+        Write-Host "  ${DM}space select / a all / g dd tools / enter install / q quit${R}      "
     }
 }
 
 function Reserve-Lines {
-    $lines = 2
+    $lines = 1
     $prevCat = ''; $prevSub = ''
     for ($i = 0; $i -lt $script:Total; $i++) {
         $p = $script:Pkgs[$i]
         if ($p.C -ne $prevCat) {
             if ($prevCat -ne '') { $lines++ }
-            $lines++; $prevCat = $p.C; $prevSub = ''
+            $lines += 2; $prevCat = $p.C; $prevSub = ''
         }
         if ($p.Sub -ne '' -and $p.Sub -ne $prevSub) {
             $lines++; $prevSub = $p.Sub
@@ -276,7 +217,7 @@ function Main {
     [Console]::CursorVisible = $false
 
     Write-Host ""
-    Write-Host "  ${B}${CY}dd-install${R}  ${D}pick your packages${R}"
+    Write-Host "  ${AC}${B}dd-install${R}"
     Write-Host ""
 
     Reserve-Lines
@@ -310,22 +251,18 @@ function Main {
                 }
                 'Enter' {
                     [Console]::CursorVisible = $true
-                    Write-Host ""
+                    Write-Host ""; Write-Host ""
                     Run-Installs
                     return
                 }
                 'Q' {
                     [Console]::CursorVisible = $true
-                    Write-Host ""
-                    Write-Host "  ${D}Cancelled.${R}"
-                    Write-Host ""
+                    Write-Host ""; Write-Host "  ${DM}cancelled${R}"; Write-Host ""
                     return
                 }
                 'Escape' {
                     [Console]::CursorVisible = $true
-                    Write-Host ""
-                    Write-Host "  ${D}Cancelled.${R}"
-                    Write-Host ""
+                    Write-Host ""; Write-Host "  ${DM}cancelled${R}"; Write-Host ""
                     return
                 }
             }
@@ -345,24 +282,22 @@ function Run-Installs {
     }
 
     if ($toInstall.Count -eq 0) {
-        Write-Host "  ${YL}Nothing selected.${R}"
-        Write-Host ""
+        Write-Host "  ${WN}nothing selected${R}"; Write-Host ""
         return
     }
 
     Detect-PM
 
     if ($script:PM -eq 'none') {
-        Write-Host "  ${RD}${B}No package manager found.${R}"
-        Write-Host "  Install ${B}winget${R}, ${B}choco${R}, or ${B}scoop${R} first."
-        Write-Host ""
+        Write-Host "  ${ER}no package manager found${R}"
+        Write-Host "  ${DM}install winget, choco, or scoop first${R}"; Write-Host ""
         return
     }
 
     $toInstall = $toInstall | Sort-Object { $script:Pkgs[$_].Order }
-
     $num = $toInstall.Count
-    Write-Host "  ${CY}Installing $num package(s) via ${B}$($script:PM)${R}${CY}...${R}"
+
+    Write-Host "  ${AC}installing $num package(s)${R} ${DM}via $($script:PM)${R}"
     Write-Host ""
 
     $ok = 0; $fail = 0; $failNames = @()
@@ -370,18 +305,18 @@ function Run-Installs {
     foreach ($idx in $toInstall) {
         $p = $script:Pkgs[$idx]
         $n = $ok + $fail + 1
-        Write-Host "  ${D}[$n/$num]${R} $($p.N)..." -NoNewline
+        Write-Host "  ${DM}$n/$num${R}  $($p.N)" -NoNewline
 
         $log = Join-Path $env:TEMP "dd-install-$($p.Id).log"
         try {
             & "Install-$($p.Id)" *> $log
             if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw "exit $LASTEXITCODE" }
-            Write-Host " ${GR}ok${R}"
+            Write-Host "  ${OK}done${R}"
             $ok++
         }
         catch {
             $_ | Out-File $log -Append
-            Write-Host " ${RD}failed${R}"
+            Write-Host "  ${ER}failed${R}"
             $fail++
             $failNames += $p.N
         }
@@ -389,11 +324,11 @@ function Run-Installs {
 
     Write-Host ""
     if ($fail -eq 0) {
-        Write-Host "  ${GR}${B}All $ok done.${R}"
+        Write-Host "  ${OK}all done${R}"
     }
     else {
-        Write-Host "  ${GR}$ok ok${R}, ${RD}$fail failed ($($failNames -join ', '))${R}"
-        Write-Host "  ${D}Logs in $env:TEMP${R}"
+        Write-Host "  ${OK}$ok done${R}  ${ER}$fail failed${R} ${DM}($($failNames -join ', '))${R}"
+        Write-Host "  ${DM}logs in $env:TEMP${R}"
     }
     Write-Host ""
 }
