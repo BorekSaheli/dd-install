@@ -3,12 +3,21 @@
 Interactive terminal installer TUI. Pick what you want, it handles the rest.
 
 ![Bash](https://img.shields.io/badge/bash-5.0%2B-green)
-![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macOS-blue)
+![PowerShell](https://img.shields.io/badge/powershell-5.1%2B-blue)
+![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macOS%20%7C%20windows-blue)
 
 ## Quick Start
 
+**Linux / macOS:**
+
 ```bash
 bash <(curl -sSL https://raw.githubusercontent.com/boreksaheli/dd-install/main/install.sh)
+```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/boreksaheli/dd-install/main/install.ps1 | iex
 ```
 
 ## What You Get
@@ -60,6 +69,7 @@ A full-screen terminal UI where you select what to install:
 
 ## Supported Platforms
 
+- **Windows** (winget, Chocolatey, or Scoop)
 - **macOS** (Homebrew)
 - **Debian / Ubuntu** (apt)
 - **Fedora** (dnf)
