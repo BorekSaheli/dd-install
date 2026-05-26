@@ -46,18 +46,11 @@ $script:Pkgs = @(
     @{ Id='azurecli';  N='Azure CLI';      Ds='+ DevOps extension';      C='DD Tools'; Sub='';       Order=11 }
     @{ Id='claudecode';N='Claude Code';    Ds='CLI agent';               C='DD Tools'; Sub='';       Order=12 }
     @{ Id='claudedesk';N='Claude Desktop'; Ds='desktop app';             C='DD Tools'; Sub='';       Order=13 }
-    @{ Id='pwsh';      N='PowerShell 7';   Ds='modern PowerShell';       C='DD Tools'; Sub='';       Order=14 }
+    @{ Id='pwsh';      N='PowerShell 7';   Ds='default shell';           C='DD Tools'; Sub='';       Order=14 }
     @{ Id='komorebi';  N='komorebi';       Ds='tiling window manager';   C='DD Tools'; Sub='';       Order=15 }
     @{ Id='viktorcli'; N='Viktor CLI';     Ds='platform CLI';            C='DD Tools'; Sub='';       Order=16 }
     @{ Id='chrome';    N='Chrome';         Ds='browser by Google';       C='Browser';  Sub='';       Order=20 }
     @{ Id='firefox';   N='Firefox';        Ds='browser by Mozilla';      C='Browser';  Sub='';       Order=20 }
-    @{ Id='curl';      N='curl';           Ds='HTTP client';             C='CLI';      Sub='';       Order=20 }
-    @{ Id='wget';      N='wget';           Ds='downloader';              C='CLI';      Sub='';       Order=20 }
-    @{ Id='jq';        N='jq';             Ds='JSON processor';          C='CLI';      Sub='';       Order=20 }
-    @{ Id='ripgrep';   N='ripgrep';        Ds='fast search';             C='CLI';      Sub='';       Order=20 }
-    @{ Id='fzf';       N='fzf';            Ds='fuzzy finder';            C='CLI';      Sub='';       Order=20 }
-    @{ Id='bat';       N='bat';            Ds='better cat';              C='CLI';      Sub='';       Order=20 }
-    @{ Id='eza';       N='eza';            Ds='better ls';               C='CLI';      Sub='';       Order=20 }
 )
 
 $script:NumPkgs = $script:Pkgs.Count
@@ -237,20 +230,26 @@ function Install-viktorcli {
     elseif (Get-Command pip -ErrorAction SilentlyContinue) { & pip install viktor-cli 2>&1 }
     else { throw "need uv or pip" }
 }
-function Install-pwsh     { Run-Pkg 'Microsoft.PowerShell' 'powershell-core' 'pwsh' }
+function Install-pwsh {
+    Run-Pkg 'Microsoft.PowerShell' 'powershell-core' 'pwsh'
+    Refresh-Path
+    $wtSettings = Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json'
+    if (Test-Path $wtSettings) {
+        $json = Get-Content $wtSettings -Raw | ConvertFrom-Json
+        $pwshProfile = $json.profiles.list | Where-Object { $_.name -match 'PowerShell' -and $_.source -eq 'Windows.Terminal.PowershellCore' } | Select-Object -First 1
+        if ($pwshProfile) {
+            $json.defaultProfile = $pwshProfile.guid
+            $json | ConvertTo-Json -Depth 20 | Set-Content $wtSettings -Encoding UTF8
+            Write-Output "Set PowerShell 7 as default Windows Terminal profile"
+        }
+    }
+}
 function Install-komorebi {
     Run-Pkg 'LGUG2Z.komorebi' 'komorebi' 'komorebi'
     Run-Pkg 'LGUG2Z.whkd' 'whkd' 'whkd'
 }
 function Install-chrome  { Run-Pkg 'Google.Chrome'  'googlechrome' 'googlechrome' }
 function Install-firefox { Run-Pkg 'Mozilla.Firefox' 'firefox'     'firefox'      }
-function Install-curl    { Run-Pkg 'cURL.cURL'                  'curl'    'curl'    }
-function Install-wget    { Run-Pkg 'JernejSimoncic.Wget'        'wget'    'wget'    }
-function Install-jq      { Run-Pkg 'jqlang.jq'                  'jq'      'jq'      }
-function Install-ripgrep { Run-Pkg 'BurntSushi.ripgrep.MSVC'    'ripgrep' 'ripgrep' }
-function Install-fzf     { Run-Pkg 'junegunn.fzf'               'fzf'     'fzf'     }
-function Install-bat     { Run-Pkg 'sharkdp.bat'                'bat'     'bat'     }
-function Install-eza     { Run-Pkg 'eza-community.eza'          'eza'     'eza'     }
 
 # ─── draw ────────────────────────────────────────────────────────────────────
 $script:StartLine = 0
