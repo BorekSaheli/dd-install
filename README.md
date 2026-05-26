@@ -1,49 +1,45 @@
 # dd-install
 
-Interactive terminal installer TUI. Pick what you want, it handles the rest.
+Interactive full-screen terminal installer for Windows. Pick what you want, it handles the rest.
 
-![Bash](https://img.shields.io/badge/bash-5.0%2B-green)
 ![PowerShell](https://img.shields.io/badge/powershell-5.1%2B-blue)
-![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macOS%20%7C%20windows-blue)
+![Platform](https://img.shields.io/badge/platform-windows-0078D4)
 
 ## Quick Start
 
-**Linux / macOS:**
-
-```bash
-bash <(curl -sSL https://raw.githubusercontent.com/boreksaheli/dd-install/main/install.sh)
-```
-
-**Windows (PowerShell):**
+Paste this into PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/boreksaheli/dd-install/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/BorekSaheli/dd-install/main/install.ps1 | iex
 ```
 
 ## What You Get
 
-A full-screen terminal UI where you select what to install:
+A full-screen TUI (like vim) where you browse and select packages to install:
 
 ```
-  ┌─────────────────────────────────────────────────────────┐
-  │           ░█▀▄░█▀▄░▀█▀░█▀█░█▀▀░▀█▀░█▀█░█░░░█░░       │
-  │           ░█░█░█░█░░█░░█░█░▀▀█░░█░░█▀█░█░░░█░░       │
-  │           ░▀▀░░▀▀░░▀▀▀░▀░▀░▀▀▀░░▀░░▀░▀░▀▀▀░▀▀▀       │
-  └─────────────────────────────────────────────────────────┘
-   Use ↑/↓ to move, Space to select, a to toggle all, Enter to install, q to quit
-
-   ── Dev Languages ──
-   ▸ ●  Python         Programming language (python3 + pip)
-     ○  Node.js        JavaScript runtime (via NodeSource/Homebrew)
-     ○  Rust           Systems programming language (via rustup)
-     ○  Go             Google's programming language
-
-   ── Dev Tools ──
-     ●  Git            Version control system
-     ●  Ruff           Extremely fast Python linter & formatter
-     ...
-
-   3 package(s) selected  ─  Press Enter to install
+╭──────────────────────────────────────────────────────────────╮
+│                                                              │
+│                  ██  dd-install  ██                           │
+│              Terminal Package Installer for Windows           │
+│                                                              │
+│──────────────────────────────────────────────────────────────│
+│  Up/Down navigate  Space toggle  A all  / search  Enter go   │
+│──────────────────────────────────────────────────────────────│
+│                                                              │
+│    ── Dev Languages ──                                       │
+│  ▸ ●  Python           Programming language (python3 + pip)  │
+│    ○  Node.js          JavaScript runtime (LTS)              │
+│    ○  Rust             Systems programming language           │
+│    ○  Go               Google's programming language          │
+│                                                              │
+│    ── Dev Tools ──                                            │
+│    ●  Git              Version control system                │
+│    ●  Ruff             Extremely fast Python linter           │
+│    ...                                                       │
+│                                                              │
+│  3 package(s) selected  ─  Press Enter to install    winget  │
+╰──────────────────────────────────────────────────────────────╯
 ```
 
 ## Available Packages
@@ -54,23 +50,26 @@ A full-screen terminal UI where you select what to install:
 | **Dev Tools** | Git, Ruff, uv, Docker, GitHub CLI |
 | **Editors** | VS Code, Neovim |
 | **Apps** | Google Chrome, Firefox |
-| **CLI Utils** | curl, wget, jq, ripgrep, fzf, tmux, htop, tree, bat, eza, zsh |
+| **CLI Utils** | curl, wget, jq, ripgrep, fzf, htop, tree, bat, eza |
 
 ## Controls
 
 | Key | Action |
 |-----|--------|
-| `↑` / `k` | Move up |
-| `↓` / `j` | Move down |
+| `Up` / `k` | Move up |
+| `Down` / `j` | Move down |
 | `Space` | Toggle selection |
-| `a` | Select / deselect all |
+| `A` | Select / deselect all |
+| `/` | Search packages |
+| `PgUp` / `PgDn` | Scroll fast |
+| `Home` / `End` | Jump to top / bottom |
 | `Enter` | Install selected |
-| `q` | Quit |
+| `Q` / `Esc` | Quit |
 
-## Supported Platforms
+## Package Managers
 
-- **Windows** (winget, Chocolatey, or Scoop)
-- **macOS** (Homebrew)
-- **Debian / Ubuntu** (apt)
-- **Fedora** (dnf)
-- **Arch Linux** (pacman)
+dd-install auto-detects and uses whichever you have:
+
+- **winget** (built into Windows 11, or install App Installer from the Microsoft Store)
+- **Chocolatey** (https://chocolatey.org/install)
+- **Scoop** (https://scoop.sh)
