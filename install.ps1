@@ -23,15 +23,15 @@ if (-not $Launched) {
 # ─── style ───────────────────────────────────────────────────────────────────
 $e = [char]27
 $B  = "$e[1m";  $D = "$e[2m";  $R = "$e[0m"
-$AC = "$e[38;5;75m"   # accent: soft blue
-$OK = "$e[38;5;114m"  # green
-$WN = "$e[38;5;222m"  # yellow
-$ER = "$e[38;5;168m"  # red
-$DM = "$e[38;5;243m"  # dim
-$HD = "$e[38;5;252m"  # header (bright white)
+$AC = "$e[38;5;75m"
+$OK = "$e[38;5;114m"
+$WN = "$e[38;5;222m"
+$ER = "$e[38;5;168m"
+$DM = "$e[38;5;243m"
+$HD = "$e[38;5;252m"
 
-$DOT_ON  = "$OK$([char]0x25CF)$R"   # ●
-$DOT_OFF = "$DM$([char]0x25CB)$R"   # ○
+$DOT_ON  = "$OK$([char]0x25CF)$R"
+$DOT_OFF = "$DM$([char]0x25CB)$R"
 
 # ─── packages ───────────────────────────────────────────────────────────────
 $script:Pkgs = @(
@@ -46,11 +46,87 @@ $script:Pkgs = @(
     @{ Id='viktorcli'; N='Viktor CLI';     Ds='platform CLI';            C='DD Tools'; Sub='';       Order=9 }
     @{ Id='chrome';    N='Chrome';         Ds='browser by Google';       C='Browser';  Sub='';       Order=10 }
     @{ Id='firefox';   N='Firefox';        Ds='browser by Mozilla';      C='Browser';  Sub='';       Order=10 }
+    @{ Id='curl';      N='curl';           Ds='HTTP client';             C='CLI';      Sub='';       Order=10 }
+    @{ Id='wget';      N='wget';           Ds='downloader';              C='CLI';      Sub='';       Order=10 }
+    @{ Id='jq';        N='jq';             Ds='JSON processor';          C='CLI';      Sub='';       Order=10 }
+    @{ Id='ripgrep';   N='ripgrep';        Ds='fast search';             C='CLI';      Sub='';       Order=10 }
+    @{ Id='fzf';       N='fzf';            Ds='fuzzy finder';            C='CLI';      Sub='';       Order=10 }
+    @{ Id='bat';       N='bat';            Ds='better cat';              C='CLI';      Sub='';       Order=10 }
+    @{ Id='eza';       N='eza';            Ds='better ls';               C='CLI';      Sub='';       Order=10 }
 )
 
-$script:Total = $script:Pkgs.Count
-$script:Sel = New-Object bool[] $script:Total
+$script:NumPkgs = $script:Pkgs.Count
+$script:Sel = New-Object bool[] $script:NumPkgs
+
+# ─── build navigable rows ───────────────────────────────────────────────────
+# rows: cat headers, sub headers, and packages — all navigable
+# type: 'cat' | 'sub' | 'pkg'
+$script:Rows = @()
+
+function Build-Rows {
+    $script:Rows = @()
+    $prevCat = ''; $prevSub = ''
+    for ($i = 0; $i -lt $script:NumPkgs; $i++) {
+        $p = $script:Pkgs[$i]
+        if ($p.C -ne $prevCat) {
+            $script:Rows += ,@{ Type='cat'; Name=$p.C }
+            $prevCat = $p.C; $prevSub = ''
+        }
+        if ($p.Sub -ne '' -and $p.Sub -ne $prevSub) {
+            $script:Rows += ,@{ Type='sub'; Name=$p.Sub; Cat=$p.C }
+            $prevSub = $p.Sub
+        }
+        $script:Rows += ,@{ Type='pkg'; Index=$i }
+    }
+}
+
+Build-Rows
+$script:NumRows = $script:Rows.Count
 $script:Cur = 0
+
+function Toggle-Category([string]$catName) {
+    $indices = @()
+    for ($i = 0; $i -lt $script:NumPkgs; $i++) {
+        if ($script:Pkgs[$i].C -eq $catName) { $indices += $i }
+    }
+    $allOn = $true
+    foreach ($i in $indices) { if (-not $script:Sel[$i]) { $allOn = $false; break } }
+    foreach ($i in $indices) { $script:Sel[$i] = -not $allOn }
+}
+
+function Toggle-Sub([string]$catName, [string]$subName) {
+    $indices = @()
+    for ($i = 0; $i -lt $script:NumPkgs; $i++) {
+        if ($script:Pkgs[$i].C -eq $catName -and $script:Pkgs[$i].Sub -eq $subName) { $indices += $i }
+    }
+    $allOn = $true
+    foreach ($i in $indices) { if (-not $script:Sel[$i]) { $allOn = $false; break } }
+    foreach ($i in $indices) { $script:Sel[$i] = -not $allOn }
+}
+
+function Get-CatSelected([string]$catName) {
+    $all = $true; $any = $false
+    for ($i = 0; $i -lt $script:NumPkgs; $i++) {
+        if ($script:Pkgs[$i].C -eq $catName) {
+            if ($script:Sel[$i]) { $any = $true } else { $all = $false }
+        }
+    }
+    if ($all -and $any) { return 'all' }
+    if ($any) { return 'some' }
+    return 'none'
+}
+
+function Get-SubSelected([string]$catName, [string]$subName) {
+    $all = $true; $any = $false
+    for ($i = 0; $i -lt $script:NumPkgs; $i++) {
+        if ($script:Pkgs[$i].C -eq $catName -and $script:Pkgs[$i].Sub -eq $subName) {
+            if ($script:Sel[$i]) { $any = $true } else { $all = $false }
+        }
+    }
+    if ($all -and $any) { return 'all' }
+    if ($any) { return 'some' }
+    return 'none'
+}
 
 # ─── detect package manager ─────────────────────────────────────────────────
 $script:PM = 'none'
@@ -116,65 +192,90 @@ function Install-viktorcli {
     elseif (Get-Command pip -ErrorAction SilentlyContinue) { & pip install viktor-cli 2>&1 }
     else { throw "need uv or pip" }
 }
-function Install-chrome  { Run-Pkg 'Google.Chrome'              'googlechrome'   'googlechrome'}
-function Install-firefox { Run-Pkg 'Mozilla.Firefox'            'firefox'        'firefox'     }
+function Install-chrome  { Run-Pkg 'Google.Chrome'  'googlechrome' 'googlechrome' }
+function Install-firefox { Run-Pkg 'Mozilla.Firefox' 'firefox'     'firefox'      }
+function Install-curl    { Run-Pkg 'cURL.cURL'                  'curl'    'curl'    }
+function Install-wget    { Run-Pkg 'JernejSimoncic.Wget'        'wget'    'wget'    }
+function Install-jq      { Run-Pkg 'jqlang.jq'                  'jq'      'jq'      }
+function Install-ripgrep { Run-Pkg 'BurntSushi.ripgrep.MSVC'    'ripgrep' 'ripgrep' }
+function Install-fzf     { Run-Pkg 'junegunn.fzf'               'fzf'     'fzf'     }
+function Install-bat     { Run-Pkg 'sharkdp.bat'                'bat'     'bat'     }
+function Install-eza     { Run-Pkg 'eza-community.eza'          'eza'     'eza'     }
 
 # ─── draw ────────────────────────────────────────────────────────────────────
 $script:StartLine = 0
 
 function Draw-List {
     [Console]::SetCursorPosition(0, $script:StartLine)
-    $prevCat = ''; $prevSub = ''
 
-    for ($i = 0; $i -lt $script:Total; $i++) {
-        $p = $script:Pkgs[$i]
+    $prevCat = ''
 
-        if ($p.C -ne $prevCat) {
+    for ($r = 0; $r -lt $script:NumRows; $r++) {
+        $row = $script:Rows[$r]
+        $isCur = ($r -eq $script:Cur)
+        $arrow = if ($isCur) { "${AC}>${R} " } else { '  ' }
+
+        if ($row.Type -eq 'cat') {
             if ($prevCat -ne '') { Write-Host "" }
-            Write-Host "  ${HD}${B}$($p.C)${R}"
-            Write-Host ""
-            $prevCat = $p.C; $prevSub = ''
+            $prevCat = $row.Name
+
+            $st = Get-CatSelected $row.Name
+            $dot = switch ($st) {
+                'all'  { $DOT_ON }
+                'some' { "${WN}$([char]0x25D2)${R}" }
+                default { $DOT_OFF }
+            }
+
+            if ($isCur) {
+                Write-Host "  ${arrow}${dot} ${HD}${B}$($row.Name)${R}"
+            }
+            else {
+                Write-Host "  ${arrow}${dot} ${HD}${B}$($row.Name)${R}"
+            }
         }
+        elseif ($row.Type -eq 'sub') {
+            $st = Get-SubSelected $row.Cat $row.Name
+            $dot = switch ($st) {
+                'all'  { $DOT_ON }
+                'some' { "${WN}$([char]0x25D2)${R}" }
+                default { $DOT_OFF }
+            }
 
-        if ($p.Sub -ne '' -and $p.Sub -ne $prevSub) {
-            Write-Host "    ${AC}$($p.Sub)${R}"
-            $prevSub = $p.Sub
-        }
-
-        $dot = if ($script:Sel[$i]) { $DOT_ON } else { $DOT_OFF }
-        $name = $p.N.PadRight(18)
-        $indent = if ($p.Sub -ne '') { '      ' } else { '    ' }
-
-        if ($i -eq $script:Cur) {
-            Write-Host "${indent}${AC}>${R} ${dot} ${B}${name}${R}${DM}$($p.Ds)${R}"
+            if ($isCur) {
+                Write-Host "    ${arrow}${dot} ${AC}$($row.Name)${R}"
+            }
+            else {
+                Write-Host "    ${arrow}${dot} ${AC}$($row.Name)${R}"
+            }
         }
         else {
-            Write-Host "${indent}  ${dot} ${name}${DM}$($p.Ds)${R}"
+            $p = $script:Pkgs[$row.Index]
+            $dot = if ($script:Sel[$row.Index]) { $DOT_ON } else { $DOT_OFF }
+            $name = $p.N.PadRight(18)
+            $indent = if ($p.Sub -ne '') { '        ' } else { '      ' }
+            $hi = if ($isCur) { $B } else { '' }
+
+            Write-Host "${indent}${arrow}${dot} ${hi}${name}${R}${DM}$($p.Ds)${R}"
         }
     }
 
     $count = @($script:Sel | Where-Object { $_ -eq $true }).Count
     Write-Host ""
     if ($count -gt 0) {
-        Write-Host "  ${OK}${B}$count selected${R}  ${DM}enter install ${DM}${AC}${DM}/ q quit${R}      "
+        Write-Host "  ${OK}${B}$count selected${R}  ${DM}enter install / q quit${R}      "
     }
     else {
-        Write-Host "  ${DM}space select / a all / g dd tools / enter install / q quit${R}      "
+        Write-Host "  ${DM}space select / a all / enter install / q quit${R}      "
     }
 }
 
 function Reserve-Lines {
     $lines = 1
-    $prevCat = ''; $prevSub = ''
-    for ($i = 0; $i -lt $script:Total; $i++) {
-        $p = $script:Pkgs[$i]
-        if ($p.C -ne $prevCat) {
-            if ($prevCat -ne '') { $lines++ }
-            $lines += 2; $prevCat = $p.C; $prevSub = ''
-        }
-        if ($p.Sub -ne '' -and $p.Sub -ne $prevSub) {
-            $lines++; $prevSub = $p.Sub
-        }
+    $prevCat = ''
+    for ($r = 0; $r -lt $script:NumRows; $r++) {
+        $row = $script:Rows[$r]
+        if ($row.Type -eq 'cat' -and $prevCat -ne '') { $lines++ }
+        if ($row.Type -eq 'cat') { $prevCat = $row.Name }
         $lines++
     }
     for ($j = 0; $j -lt $lines; $j++) { Write-Host "" }
@@ -199,25 +300,25 @@ function Main {
 
             switch ($key.Key) {
                 'UpArrow'   { if ($script:Cur -gt 0) { $script:Cur-- } }
-                'DownArrow' { if ($script:Cur -lt ($script:Total - 1)) { $script:Cur++ } }
+                'DownArrow' { if ($script:Cur -lt ($script:NumRows - 1)) { $script:Cur++ } }
                 'K'         { if ($script:Cur -gt 0) { $script:Cur-- } }
-                'J'         { if ($script:Cur -lt ($script:Total - 1)) { $script:Cur++ } }
+                'J'         { if ($script:Cur -lt ($script:NumRows - 1)) { $script:Cur++ } }
                 'Spacebar'  {
-                    $script:Sel[$script:Cur] = -not $script:Sel[$script:Cur]
-                    if ($script:Cur -lt ($script:Total - 1)) { $script:Cur++ }
+                    $row = $script:Rows[$script:Cur]
+                    if ($row.Type -eq 'cat') {
+                        Toggle-Category $row.Name
+                    }
+                    elseif ($row.Type -eq 'sub') {
+                        Toggle-Sub $row.Cat $row.Name
+                    }
+                    else {
+                        $script:Sel[$row.Index] = -not $script:Sel[$row.Index]
+                    }
+                    if ($script:Cur -lt ($script:NumRows - 1)) { $script:Cur++ }
                 }
                 'A' {
                     $anyOff = @($script:Sel | Where-Object { $_ -eq $false }).Count -gt 0
-                    for ($i = 0; $i -lt $script:Total; $i++) { $script:Sel[$i] = $anyOff }
-                }
-                'G' {
-                    $allOn = $true
-                    for ($i = 0; $i -lt $script:Total; $i++) {
-                        if ($script:Pkgs[$i].C -eq 'DD Tools' -and -not $script:Sel[$i]) { $allOn = $false; break }
-                    }
-                    for ($i = 0; $i -lt $script:Total; $i++) {
-                        if ($script:Pkgs[$i].C -eq 'DD Tools') { $script:Sel[$i] = -not $allOn }
-                    }
+                    for ($i = 0; $i -lt $script:NumPkgs; $i++) { $script:Sel[$i] = $anyOff }
                 }
                 'Enter' {
                     [Console]::CursorVisible = $true
@@ -247,7 +348,7 @@ function Main {
 
 function Run-Installs {
     $toInstall = @()
-    for ($i = 0; $i -lt $script:Total; $i++) {
+    for ($i = 0; $i -lt $script:NumPkgs; $i++) {
         if ($script:Sel[$i]) { $toInstall += $i }
     }
 
