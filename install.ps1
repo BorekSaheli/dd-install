@@ -39,14 +39,16 @@ $script:Pkgs = @(
     @{ Id='ruff';      N='Ruff';           Ds='linter / formatter';      C='DD Tools'; Sub='Python'; Order=2 }
     @{ Id='ty';        N='ty';             Ds='type checker';            C='DD Tools'; Sub='Python'; Order=3 }
     @{ Id='python313'; N='Python 3.13';    Ds='global via uv';           C='DD Tools'; Sub='Python'; Order=4 }
-    @{ Id='chezmoi';   N='chezmoi';        Ds='dotfiles manager';        C='DD Tools'; Sub='Config'; Order=5 }
-    @{ Id='nerdfont';  N='JetBrains Mono'; Ds='nerd font + terminal';    C='DD Tools'; Sub='Config'; Order=6 }
-    @{ Id='starship';  N='Starship';       Ds='cross-shell prompt';      C='DD Tools'; Sub='Config'; Order=7 }
-    @{ Id='git';       N='Git';            Ds='version control';         C='DD Tools'; Sub='';       Order=8 }
-    @{ Id='azurecli';  N='Azure CLI';      Ds='+ DevOps extension';      C='DD Tools'; Sub='';       Order=9 }
-    @{ Id='claudecode';N='Claude Code';    Ds='CLI agent';               C='DD Tools'; Sub='';       Order=10 }
-    @{ Id='claudedesk';N='Claude Desktop'; Ds='desktop app';             C='DD Tools'; Sub='';       Order=11 }
-    @{ Id='viktorcli'; N='Viktor CLI';     Ds='platform CLI';            C='DD Tools'; Sub='';       Order=12 }
+    @{ Id='nerdfont';  N='JetBrains Mono'; Ds='nerd font + terminal';    C='DD Tools'; Sub='Config'; Order=5 }
+    @{ Id='starship';  N='Starship';       Ds='cross-shell prompt';      C='DD Tools'; Sub='Config'; Order=6 }
+    @{ Id='chezmoi';   N='chezmoi';        Ds='dotfiles from GitHub';    C='DD Tools'; Sub='Config'; Order=99 }
+    @{ Id='git';       N='Git';            Ds='version control';         C='DD Tools'; Sub='';       Order=10 }
+    @{ Id='azurecli';  N='Azure CLI';      Ds='+ DevOps extension';      C='DD Tools'; Sub='';       Order=11 }
+    @{ Id='claudecode';N='Claude Code';    Ds='CLI agent';               C='DD Tools'; Sub='';       Order=12 }
+    @{ Id='claudedesk';N='Claude Desktop'; Ds='desktop app';             C='DD Tools'; Sub='';       Order=13 }
+    @{ Id='pwsh';      N='PowerShell 7';   Ds='modern PowerShell';       C='DD Tools'; Sub='';       Order=14 }
+    @{ Id='komorebi';  N='komorebi';       Ds='tiling window manager';   C='DD Tools'; Sub='';       Order=15 }
+    @{ Id='viktorcli'; N='Viktor CLI';     Ds='platform CLI';            C='DD Tools'; Sub='';       Order=16 }
     @{ Id='chrome';    N='Chrome';         Ds='browser by Google';       C='Browser';  Sub='';       Order=20 }
     @{ Id='firefox';   N='Firefox';        Ds='browser by Mozilla';      C='Browser';  Sub='';       Order=20 }
     @{ Id='curl';      N='curl';           Ds='HTTP client';             C='CLI';      Sub='';       Order=20 }
@@ -234,6 +236,11 @@ function Install-viktorcli {
     if (Get-Command uv -ErrorAction SilentlyContinue) { & uv tool install viktor-cli 2>&1 }
     elseif (Get-Command pip -ErrorAction SilentlyContinue) { & pip install viktor-cli 2>&1 }
     else { throw "need uv or pip" }
+}
+function Install-pwsh     { Run-Pkg 'Microsoft.PowerShell' 'powershell-core' 'pwsh' }
+function Install-komorebi {
+    Run-Pkg 'LGUG2Z.komorebi' 'komorebi' 'komorebi'
+    Run-Pkg 'LGUG2Z.whkd' 'whkd' 'whkd'
 }
 function Install-chrome  { Run-Pkg 'Google.Chrome'  'googlechrome' 'googlechrome' }
 function Install-firefox { Run-Pkg 'Mozilla.Firefox' 'firefox'     'firefox'      }
