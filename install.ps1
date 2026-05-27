@@ -35,22 +35,28 @@ $DOT_OFF = "$DM$([char]0x25CB)$R"
 
 # ─── packages ───────────────────────────────────────────────────────────────
 $script:Pkgs = @(
+    # Order = dependency group. Same order = parallel. Lower order runs first.
+    # 0: git (needed by chezmoi)
+    # 1: uv (needed by ruff, ty, python, viktor)
+    # 2: things that need uv (parallel)
+    # 3: independent tools (parallel)
+    # 99: chezmoi last (needs git + everything configured)
     @{ Id='uv';        N='uv';             Ds='package manager';         C='DD Tools'; Sub='Python'; Order=1 }
     @{ Id='ruff';      N='Ruff';           Ds='linter / formatter';      C='DD Tools'; Sub='Python'; Order=2 }
-    @{ Id='ty';        N='ty';             Ds='type checker';            C='DD Tools'; Sub='Python'; Order=3 }
-    @{ Id='python313'; N='Python 3.13';    Ds='global via uv';           C='DD Tools'; Sub='Python'; Order=4 }
-    @{ Id='nerdfont';  N='JetBrains Mono'; Ds='nerd font + terminal';    C='DD Tools'; Sub='Config'; Order=5 }
-    @{ Id='starship';  N='Starship';       Ds='cross-shell prompt';      C='DD Tools'; Sub='Config'; Order=6 }
+    @{ Id='ty';        N='ty';             Ds='type checker';            C='DD Tools'; Sub='Python'; Order=2 }
+    @{ Id='python313'; N='Python 3.13';    Ds='global via uv';           C='DD Tools'; Sub='Python'; Order=2 }
+    @{ Id='nerdfont';  N='JetBrains Mono'; Ds='nerd font + terminal';    C='DD Tools'; Sub='Config'; Order=3 }
+    @{ Id='starship';  N='Starship';       Ds='cross-shell prompt';      C='DD Tools'; Sub='Config'; Order=3 }
     @{ Id='chezmoi';   N='chezmoi';        Ds='dotfiles from GitHub';    C='DD Tools'; Sub='Config'; Order=99 }
     @{ Id='git';       N='Git';            Ds='version control';         C='DD Tools'; Sub='';       Order=0 }
-    @{ Id='azurecli';  N='Azure CLI';      Ds='+ DevOps extension';      C='DD Tools'; Sub='';       Order=11 }
-    @{ Id='claudecode';N='Claude Code';    Ds='CLI agent';               C='DD Tools'; Sub='';       Order=12 }
-    @{ Id='claudedesk';N='Claude Desktop'; Ds='desktop app';             C='DD Tools'; Sub='';       Order=13 }
-    @{ Id='pwsh';      N='PowerShell 7';   Ds='default shell';           C='DD Tools'; Sub='';       Order=14 }
-    @{ Id='komorebi';  N='komorebi';       Ds='tiling window manager';   C='DD Tools'; Sub='';       Order=15 }
-    @{ Id='viktorcli'; N='Viktor CLI';     Ds='platform CLI';            C='DD Tools'; Sub='';       Order=16 }
-    @{ Id='chrome';    N='Chrome';         Ds='browser by Google';       C='Browser';  Sub='';       Order=20 }
-    @{ Id='firefox';   N='Firefox';        Ds='browser by Mozilla';      C='Browser';  Sub='';       Order=20 }
+    @{ Id='azurecli';  N='Azure CLI';      Ds='+ DevOps extension';      C='DD Tools'; Sub='';       Order=3 }
+    @{ Id='claudecode';N='Claude Code';    Ds='CLI agent';               C='DD Tools'; Sub='';       Order=3 }
+    @{ Id='claudedesk';N='Claude Desktop'; Ds='desktop app';             C='DD Tools'; Sub='';       Order=3 }
+    @{ Id='pwsh';      N='PowerShell 7';   Ds='default shell';           C='DD Tools'; Sub='';       Order=3 }
+    @{ Id='komorebi';  N='komorebi';       Ds='tiling window manager';   C='DD Tools'; Sub='';       Order=3 }
+    @{ Id='viktorcli'; N='Viktor CLI';     Ds='platform CLI';            C='DD Tools'; Sub='';       Order=2 }
+    @{ Id='chrome';    N='Chrome';         Ds='browser by Google';       C='Browser';  Sub='';       Order=3 }
+    @{ Id='firefox';   N='Firefox';        Ds='browser by Mozilla';      C='Browser';  Sub='';       Order=3 }
 )
 
 $script:NumPkgs = $script:Pkgs.Count
@@ -429,6 +435,21 @@ function Main {
     }
 }
 
+function Get-InstallScriptBlock([string]$id, [string]$pm) {
+    $refreshPath = 'function Refresh-Path { $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") }'
+    $runPkg = @"
+function Run-Pkg([string]`$W, [string]`$Ch, [string]`$Sc) {
+    switch ('$pm') {
+        'winget' { & winget install --id `$W -e --accept-source-agreements --accept-package-agreements --silent 2>&1 }
+        'choco'  { & choco install `$Ch -y 2>&1 }
+        'scoop'  { & scoop install `$Sc 2>&1 }
+    }
+}
+"@
+    $funcBody = (Get-Command "Install-$id").ScriptBlock.ToString()
+    return [scriptblock]::Create("$refreshPath`n$runPkg`n$funcBody")
+}
+
 function Run-Installs {
     $toInstall = @()
     for ($i = 0; $i -lt $script:NumPkgs; $i++) {
@@ -448,31 +469,75 @@ function Run-Installs {
         return
     }
 
-    $toInstall = $toInstall | Sort-Object { $script:Pkgs[$_].Order }
     $num = $toInstall.Count
-
     Write-Host "  ${AC}installing $num package(s)${R} ${DM}via $($script:PM)${R}"
     Write-Host ""
 
-    $ok = 0; $fail = 0; $failNames = @()
+    $ok = 0; $fail = 0; $failNames = @(); $done = 0
 
-    foreach ($idx in $toInstall) {
-        $p = $script:Pkgs[$idx]
-        $n = $ok + $fail + 1
-        Write-Host "  ${DM}$n/$num${R}  $($p.N)" -NoNewline
+    $groups = $toInstall | Group-Object { $script:Pkgs[$_].Order } | Sort-Object { [int]$_.Name }
 
-        $log = Join-Path $env:TEMP "dd-install-$($p.Id).log"
-        try {
-            & "Install-$($p.Id)" *> $log
-            if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw "exit $LASTEXITCODE" }
-            Write-Host "  ${OK}done${R}"
-            $ok++
+    foreach ($group in $groups) {
+        $indices = @($group.Group)
+
+        if ($indices.Count -eq 1) {
+            $idx = $indices[0]
+            $p = $script:Pkgs[$idx]
+            $done++
+            Write-Host "  ${DM}$done/$num${R}  $($p.N)" -NoNewline
+
+            $log = Join-Path $env:TEMP "dd-install-$($p.Id).log"
+            try {
+                & "Install-$($p.Id)" *> $log
+                if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw "exit $LASTEXITCODE" }
+                Write-Host "  ${OK}done${R}"
+                $ok++
+            }
+            catch {
+                $_ | Out-File $log -Append
+                Write-Host "  ${ER}failed${R}"
+                $fail++
+                $failNames += $p.N
+            }
         }
-        catch {
-            $_ | Out-File $log -Append
-            Write-Host "  ${ER}failed${R}"
-            $fail++
-            $failNames += $p.N
+        else {
+            $names = ($indices | ForEach-Object { $script:Pkgs[$_].N }) -join ', '
+            $count = $indices.Count
+            Write-Host "  ${DM}$($done+1)-$($done+$count)/$num${R}  ${AC}parallel${R}  $names"
+
+            $jobs = @()
+            foreach ($idx in $indices) {
+                $p = $script:Pkgs[$idx]
+                $log = Join-Path $env:TEMP "dd-install-$($p.Id).log"
+                $sb = Get-InstallScriptBlock $p.Id $script:PM
+                $jobs += @{
+                    Job = Start-Job -ScriptBlock $sb
+                    Pkg = $p
+                    Log = $log
+                }
+            }
+
+            while ($jobs | Where-Object { $_.Job.State -eq 'Running' }) {
+                Start-Sleep -Milliseconds 500
+            }
+
+            foreach ($j in $jobs) {
+                $done++
+                $result = Receive-Job -Job $j.Job 2>&1
+                $result | Out-File $j.Log -Encoding UTF8
+                if ($j.Job.State -eq 'Completed') {
+                    Write-Host "    $($j.Pkg.N)  ${OK}done${R}"
+                    $ok++
+                }
+                else {
+                    Write-Host "    $($j.Pkg.N)  ${ER}failed${R}"
+                    $fail++
+                    $failNames += $j.Pkg.N
+                }
+                Remove-Job -Job $j.Job -Force
+            }
+
+            Refresh-Path
         }
     }
 
