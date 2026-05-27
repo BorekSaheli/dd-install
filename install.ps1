@@ -197,6 +197,26 @@ function Install-nerdfont {
         $json | ConvertTo-Json -Depth 20 | Set-Content $wtSettings -Encoding UTF8
         Write-Output "Set JetBrainsMono Nerd Font as Windows Terminal default"
     }
+
+    $jbConfigDirs = @(
+        (Get-ChildItem "$env:APPDATA\JetBrains" -Directory -Filter 'PyCharm*' -ErrorAction SilentlyContinue),
+        (Get-ChildItem "$env:APPDATA\JetBrains" -Directory -Filter 'IntelliJIdea*' -ErrorAction SilentlyContinue)
+    ) | ForEach-Object { $_ } | Where-Object { $_ }
+    foreach ($dir in $jbConfigDirs) {
+        $editorXml = Join-Path $dir.FullName 'options\editor.xml'
+        $optionsDir = Join-Path $dir.FullName 'options'
+        if (-not (Test-Path $optionsDir)) { New-Item -ItemType Directory -Path $optionsDir -Force | Out-Null }
+        $xmlContent = @'
+<application>
+  <component name="DefaultFont">
+    <option name="FONT_FAMILY" value="JetBrainsMono Nerd Font" />
+    <option name="FONT_SIZE" value="13" />
+  </component>
+</application>
+'@
+        Set-Content -Path $editorXml -Value $xmlContent -Encoding UTF8
+        Write-Output "Set JetBrainsMono Nerd Font in $($dir.Name)"
+    }
 }
 function Install-starship {
     Run-Pkg 'Starship.Starship' 'starship' 'starship'
