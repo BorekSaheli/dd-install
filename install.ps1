@@ -165,7 +165,6 @@ function Install-python313 {
     Refresh-Path
     if (Get-Command uv -ErrorAction SilentlyContinue) {
         & uv python install 3.13 2>&1
-        & uv python pin 3.13 --global 2>&1
     }
     else { throw "uv required" }
 }
@@ -190,32 +189,47 @@ function Install-nerdfont {
     $wtSettings = Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json'
     if (Test-Path $wtSettings) {
         $json = Get-Content $wtSettings -Raw | ConvertFrom-Json
-        if (-not $json.profiles.defaults.PSObject.Properties['font']) {
-            $json.profiles.defaults | Add-Member -NotePropertyName 'font' -NotePropertyValue @{} -Force
+        if (-not $json.profiles.PSObject.Properties['defaults']) {
+            $json.profiles | Add-Member -NotePropertyName 'defaults' -NotePropertyValue ([PSCustomObject]@{}) -Force
         }
-        $json.profiles.defaults.font = @{ face = 'JetBrainsMono Nerd Font'; size = 12 }
+        if (-not $json.profiles.defaults.PSObject.Properties['font']) {
+            $json.profiles.defaults | Add-Member -NotePropertyName 'font' -NotePropertyValue ([PSCustomObject]@{}) -Force
+        }
+        $json.profiles.defaults.font = [PSCustomObject]@{ face = 'JetBrainsMono Nerd Font'; size = 12 }
         $json | ConvertTo-Json -Depth 20 | Set-Content $wtSettings -Encoding UTF8
         Write-Output "Set JetBrainsMono Nerd Font as Windows Terminal default"
     }
 
-    $jbConfigDirs = @(
-        (Get-ChildItem "$env:APPDATA\JetBrains" -Directory -Filter 'PyCharm*' -ErrorAction SilentlyContinue),
-        (Get-ChildItem "$env:APPDATA\JetBrains" -Directory -Filter 'IntelliJIdea*' -ErrorAction SilentlyContinue)
-    ) | ForEach-Object { $_ } | Where-Object { $_ }
-    foreach ($dir in $jbConfigDirs) {
-        $editorXml = Join-Path $dir.FullName 'options\editor.xml'
-        $optionsDir = Join-Path $dir.FullName 'options'
-        if (-not (Test-Path $optionsDir)) { New-Item -ItemType Directory -Path $optionsDir -Force | Out-Null }
-        $xmlContent = @'
+    $jbBase = "$env:APPDATA\JetBrains"
+    if (Test-Path $jbBase) {
+        $jbConfigDirs = Get-ChildItem $jbBase -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(PyCharm|IntelliJIdea)' }
+        foreach ($dir in $jbConfigDirs) {
+            $optionsDir = Join-Path $dir.FullName 'options'
+            if (-not (Test-Path $optionsDir)) { New-Item -ItemType Directory -Path $optionsDir -Force | Out-Null }
+            $editorFontXml = Join-Path $optionsDir 'editor-font.xml'
+            $xmlContent = @'
 <application>
-  <component name="DefaultFont">
+  <component name="DefaultEditorFontPreferences">
+    <option name="FONT_FAMILY" value="JetBrainsMono Nerd Font" />
+    <option name="FONT_SIZE" value="13" />
+    <option name="FONT_REGULAR_WEIGHT" value="400" />
+    <option name="LINE_SPACING" value="1.2" />
+  </component>
+</application>
+'@
+            Set-Content -Path $editorFontXml -Value $xmlContent -Encoding UTF8
+            $consoleFontXml = Join-Path $optionsDir 'editor.xml'
+            $consoleContent = @'
+<application>
+  <component name="ConsoleFont">
     <option name="FONT_FAMILY" value="JetBrainsMono Nerd Font" />
     <option name="FONT_SIZE" value="13" />
   </component>
 </application>
 '@
-        Set-Content -Path $editorXml -Value $xmlContent -Encoding UTF8
-        Write-Output "Set JetBrainsMono Nerd Font in $($dir.Name)"
+            Set-Content -Path $consoleFontXml -Value $consoleContent -Encoding UTF8
+            Write-Output "Set JetBrainsMono Nerd Font in $($dir.Name)"
+        }
     }
 }
 function Install-starship {
